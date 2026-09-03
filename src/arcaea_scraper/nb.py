@@ -5,30 +5,20 @@ app = marimo.App(width="full")
 
 
 @app.cell
-def _():
-    import requests
+def _(tadata):
     import pandas as pd
-    from dotenv import load_dotenv
-    import os
+    import marimo as mo
+    from pathlib import Path
+    import ast
+    from Arcaea import Arcaea
 
-    #
-    # load_dotenv()
-    # url = """https://webapi.lowiro.com/webapi/score/rating/me"""
-    # cookie = {"ctrcode": ";", "sid": os.getenv("COOKIE")}
-    # test = requests.get(url=url, cookies=cookie)
-    # idk = test.json()
-    # df = pd.DataFrame(idk["value"]["best_rated_scores"])
-    # df.to_csv("B50.csv", index=False)
-    df = pd.read_csv("B50.csv")
-    df.info()
-    print(df.shape, df.head(50), df.describe())
-    df.to_html("B50.html")
-    return (df,)
+    test = Arcaea()
+    tadata
+    return
 
 
 @app.cell
-def _(df):
-    df
+def _():
     return
 
 
