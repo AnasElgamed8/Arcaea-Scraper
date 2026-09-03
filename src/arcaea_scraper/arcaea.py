@@ -12,15 +12,18 @@ class Arcaea:
         self.work_dir = Path(__file__).resolve().parent.parent.parent
         self.data_dir = self.work_dir / "data"
         load_dotenv()
-        self.cookie = {"ctrcode": ";", "sid": os.getenv("COOKIE")}
-        self.base_url = """https://webapi.lowiro.com/webapi"""
-        self.b50_url = f"""{self.base_url}/score/rating/me"""
-        self.songs_url = f"""{self.base_url}/score/song/me/all?difficulty="""
+        self._cookie = {"ctrcode": ";", "sid": os.getenv("COOKIE")}
+        self._base_url = """https://webapi.lowiro.com/webapi"""
+        self._b50_url = f"""{self._base_url}/score/rating/me"""
+        self._songs_url = f"""{self._base_url}/score/song/me/all?difficulty="""
+        self._raw_scores_dir = Path(f"{self.data_dir}/all.csv")
+        self._clean_scores_dir = Path(f"{self.data_dir}/all_clean.csv")
+
         self.all_scores_raw = None
 
     def _get(self, url):
         try:
-            result = requests.get(url=url, cookies=self.cookie)
+            result = requests.get(url=url, cookies=self._cookie)
             result.raise_for_status()
             print("Done, waiting for 2 seconds")
             time.sleep(2)
@@ -30,27 +33,30 @@ class Arcaea:
 
     def save_scores(self, difficulties=None):
         try:
-            self.all_scores_raw = pd.read_csv(f"{self.data_dir}/all.csv")
+            self.all_scores_raw = pd.read_csv(self._raw_scores_dir)
             print("Cached scores found. Pick an option:")
-            print("[1] Start from scratch", "[2] Do nothing", "Your choice: ", sep="\n")
-            choice = input()
+            print(
+                "[1] Start from scratch",
+                "[2] Clean the dataset only",
+                "[3] Do nothing",
+                "Your choice: ",
+                sep="\n",
+            )
+            choice = int(input())
             match choice:
                 case 1:
-                    Path.unlink(self.data_dir / "all.csv")
-                    Path.unlink(self.data_dir / "all_clean.csv")
-                    self._all_scores_clean(difficulties)
+                    Path.unlink(self._raw_scores_dir)
+                    Path.unlink(self._clean_scores_dir, missing_ok=True)
+                    self._all_scores_get(difficulties)
+                case 2:
+                    self._all_scores_clean()
                 case _:
                     return
         except FileNotFoundError:
             print("No cached scores found. Starting from scratch.")
+            self._all_scores_get(difficulties)
 
     def _all_scores_get(self, difficulties=None):
-        try:
-            self.all_scores_raw = pd.read_csv(f"{self.data_dir}/all.csv")
-
-        except FileNotFoundError:
-            print("No cached scores found. Starting from scratch.")
-
         if difficulties is None:
             difficulties = [0, 1, 2, 3, 4]
         for difficulty in difficulties:
@@ -64,7 +70,7 @@ class Arcaea:
                     )
                 else:
                     print(f"Starting difficulty {difficulty}. First Page")
-                url = f"{self.songs_url}{difficulty}&page={page}&sort=title"
+                url = f"{self._songs_url}{difficulty}&page={page}&sort=title"
                 response = self._get(url)
                 charts = pd.DataFrame(response["value"]["scores"])
                 chart_count = response["value"]["count"]
@@ -83,15 +89,14 @@ class Arcaea:
             print(f"Difficulty {difficulty} done! Moving on.")
 
         print("All difficulties done. Writing to all.csv")
-        self.all_scores_raw.to_csv(f"{self.data_dir}/all.csv", index=False)
+        self.all_scores_raw.to_csv(self._raw_scores_dir, index=False)
         print("Done. Moving on to cleaning.")
         self._all_scores_clean()
         print("Done!")
 
     def _all_scores_clean(self):
-        raw_data = pd.read_csv(test.data_dir / "all.csv")
         columns_to_keep = ["title", "difficulty", "score", "difficulty_alias"]
-        data = raw_data[columns_to_keep]
+        data = self.all_scores_raw[columns_to_keep]
         data["title"] = data["title"].apply(ast.literal_eval)
         lang = pd.json_normalize(data["title"])
         data["title"] = lang["en"]
@@ -102,8 +107,9 @@ class Arcaea:
         temp = data["difficulty_alias"] == 1
         data.loc[temp, "difficulty"] = "INS"
         self.all_scores_cleaned = data.drop("difficulty_alias", axis="columns")
-        self.all_scores_cleared.to.csv(f"{self.data_dir}/all_clean.csv")
+        self.all_scores_cleaned.to_csv(self._clean_scores_dir, index=False)
 
 
 if __name__ == "__main__":
-    pass
+    test = Arcaea()
+    test.save_scores()
