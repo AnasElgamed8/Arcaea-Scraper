@@ -21,16 +21,6 @@ class Arcaea:
 
         self.all_scores_raw = None
 
-    def _get(self, url):
-        try:
-            result = requests.get(url=url, cookies=self._cookie)
-            result.raise_for_status()
-            print("Done, waiting for 2 seconds")
-            time.sleep(2)
-            return result.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Failed: {e}")
-
     def save_scores(self, difficulties=None):
         try:
             self.all_scores_raw = pd.read_csv(self._raw_scores_dir)
@@ -38,7 +28,7 @@ class Arcaea:
             print(
                 "[1] Start from scratch",
                 "[2] Clean the dataset only",
-                "[3] Do nothing",
+                "[3] just load the sheets (default)",
                 "Your choice: ",
                 sep="\n",
             )
@@ -48,13 +38,27 @@ class Arcaea:
                     Path.unlink(self._raw_scores_dir)
                     Path.unlink(self._clean_scores_dir, missing_ok=True)
                     self._all_scores_get(difficulties)
+
                 case 2:
+                    Path.unlink(self._clean_scores_dir, missing_ok=True)
                     self._all_scores_clean()
+
                 case _:
+                    self._all_scores_cleaned = pd.read_csv(self._clean_scores_dir)
                     return
         except FileNotFoundError:
             print("No cached scores found. Starting from scratch.")
             self._all_scores_get(difficulties)
+
+    def _get(self, url):
+        try:
+            result = requests.get(url=url, cookies=self._cookie)
+            result.raise_for_status()
+            print("Done, waiting for 2 seconds")
+            time.sleep(2)
+            return result.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Failed: {e}")
 
     def _all_scores_get(self, difficulties=None):
         if difficulties is None:
@@ -99,15 +103,17 @@ class Arcaea:
         data = self.all_scores_raw[columns_to_keep]
         data["title"] = data["title"].apply(ast.literal_eval)
         lang = pd.json_normalize(data["title"])
-        data["title"] = lang["en"]
+        data["Title"] = lang["en"]
         data["difficulty_alias"] = data["difficulty_alias"].fillna(-1)
-        data["difficulty"] = data["difficulty"].map(
+        data["Difficulty"] = data["difficulty"].map(
             {0: "PST", 1: "PRS", 2: "FTR", 3: "BYD", 4: "ETR"}
         )
         temp = data["difficulty_alias"] == 1
-        data.loc[temp, "difficulty"] = "INS"
-        self.all_scores_cleaned = data.drop("difficulty_alias", axis="columns")
-        self.all_scores_cleaned.to_csv(self._clean_scores_dir, index=False)
+        data.loc[temp, "Difficulty"] = "INS"
+        data["Score"] = data["score"]
+        columns_to_keep = ["Title", "Difficulty", "Score"]
+        self._all_scores_cleaned = data[columns_to_keep]
+        self._all_scores_cleaned.to_csv(self._clean_scores_dir, index=False)
 
 
 if __name__ == "__main__":
