@@ -28,7 +28,7 @@ use a cookie editor browser extension, the value you need is in the "sid" field.
 
 ### 3. Save the cookie
 
-open `example.env` and save your copy there
+open `example.env` and save your cookie there, then rename the file to `.env`
 
 ### 4. Run the script
 uv required, you will have to install that first
