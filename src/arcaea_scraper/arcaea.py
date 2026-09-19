@@ -49,7 +49,7 @@ class Arcaea:
                     Path.unlink(self._raw_scores_dir)
                     Path.unlink(self._clean_scores_dir, missing_ok=True)
                     self._all_scores_get(difficulties)
-
+                    self._all_scores_clean()
                 case 2:
                     Path.unlink(self._clean_scores_dir, missing_ok=True)
                     self._all_scores_clean()
@@ -128,25 +128,39 @@ class Arcaea:
         print("All difficulties done. Writing to all.csv")
         self.all_scores_raw.to_csv(self._raw_scores_dir, index=False)
 
-        print("Done!")
+        print("Fetching scores done!")
 
     def _all_scores_clean(self):
-        columns_to_keep = ["title", "difficulty", "score", "difficulty_alias"]
+        # read raw scores from disk
+        self.all_scores_raw = pd.read_csv(self._raw_scores_dir)
 
+        # Keep only useful columns
+        columns_to_keep = ["title", "difficulty", "score", "difficulty_alias"]
         data = self.all_scores_raw[columns_to_keep]
+
+        # keep only english titles
         data["title"] = data["title"].apply(ast.literal_eval)
         lang = pd.json_normalize(data["title"])
         data["Title"] = lang["en"]
-        data["difficulty_alias"] = data["difficulty_alias"].fillna(-1)
+
+        # Map the main 5 difficulties
         data["Difficulty"] = data["difficulty"].map(
             {0: "PST", 1: "PRS", 2: "FTR", 3: "BYD", 4: "ETR"}
         )
+
+        # handle INS difficulty
+        data["difficulty_alias"] = data["difficulty_alias"].fillna(-1)
         temp = data["difficulty_alias"] == 1
         data.loc[temp, "Difficulty"] = "INS"
+
+        # clean column names
         data["Score"] = data["score"]
         columns_to_keep = ["Title", "Difficulty", "Score"]
         self._all_scores_cleaned = data[columns_to_keep]
+
+        # save to disk
         self._all_scores_cleaned.to_csv(self._clean_scores_dir, index=False)
+        print("Cleaning done!")
 
 
 if __name__ == "__main__":
