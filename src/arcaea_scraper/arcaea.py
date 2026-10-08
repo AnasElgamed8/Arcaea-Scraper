@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import ast
 import os
 import time
+from sys import exit
 
 
 class Arcaea:
@@ -76,6 +77,8 @@ class Arcaea:
 
         except requests.exceptions.RequestException as e:
             print(f"Failed: {e}")
+            print("Do you have an Arcaea online subscribtion?")
+            exit()
 
     def _all_scores_get(self, difficulties=None):
         # get all difficulties by default
